@@ -3,7 +3,7 @@ import streamlit as st
 import os
 import uuid
 
-def main()
+def main():
     st.write("This is admin site for chat with pdf demo.")
 
 if __name__ == "__main__":

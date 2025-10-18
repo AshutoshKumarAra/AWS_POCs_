@@ -1,8 +1,6 @@
-boto3
-pypdf
+streamlit
 langchain
 langchain-community
 langchain_text_splitters
 faiss-cpu
-python-dotenv
-streamlit
+boto3

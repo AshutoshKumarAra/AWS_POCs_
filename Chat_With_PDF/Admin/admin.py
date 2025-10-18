@@ -11,7 +11,7 @@ BUCKET_NAME = os.getenv("BUCKET_NAME")
 from langchain_community.embeddings import BedrockEmbeddings
 
 ## Text Splitter
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 ## PDF Loader
 from langchain_community.document_loaders import PyPDFLoader
@@ -19,7 +19,7 @@ from langchain_community.document_loaders import PyPDFLoader
 ## Import FAISS
 from langchain_community.vectorstores import FAISS
 
-bedrock_client = boto3.client(service_name="bedrock-runtime")
+bedrock_client = boto3.client(service_name="bedrock-runtime", region_name="us-east-1")
 bedrock_embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1", client=bedrock_client)
 
 ## Unique ID Generation Function

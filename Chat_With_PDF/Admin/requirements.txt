@@ -1,5 +1,7 @@
-streamlit
+boto3
 pypdf
 langchain
+langchain-community
 faiss-cpu
-boto3
+python-dotenv
+streamlit

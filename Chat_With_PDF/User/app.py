@@ -3,52 +3,54 @@ import streamlit as st
 import os
 import uuid
 
-## S3_Client
+# S3 Client
 s3_client = boto3.client("s3")
 BUCKET_NAME = os.getenv("BUCKET_NAME")
+folder_path = "/tmp/"
 
-## Bedrock Embeddings
+# Check for missing bucket name
+if not BUCKET_NAME:
+    st.error("BUCKET_NAME environment variable is not set.")
+    st.stop()
+
+# Bedrock Embeddings
 from langchain_community.embeddings import BedrockEmbeddings
 
-## Bedrock
-from langchain.llms.bedrock import Bedrock
+# Bedrock LLM
 from langchain_community.llms import Bedrock
 
-## For RAG
+# RAG Components
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 
-## Text Splitter
+# Text Splitter
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-## PDF Loader
+# PDF Loader
 from langchain_community.document_loaders import PyPDFLoader
 
-## Import FAISS
+# FAISS Vector Store
 from langchain_community.vectorstores import FAISS
 
+# Bedrock client
 bedrock_client = boto3.client(service_name="bedrock-runtime", region_name="us-east-1")
 bedrock_embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1", client=bedrock_client)
 
-folder_path = "/tmp/"
-
-## Unique ID Generation Function
+# Unique ID Generator
 def get_unique_id():
-    return str (uuid.uuid4())
+    return str(uuid.uuid4())
 
-## Load Index
+# Load FAISS index from S3
 def load_index():
-    s3_client.download_file(Bucket=BUCKET_NAME, Key="my_faiss.faiss", Filename=f"{folder_path}myfaiss.faiss")
-    s3_client.download_file(Bucket=BUCKET_NAME, Key="my_faiss.pkl", Filename=f"{folder_path}my_faiss.pkl")
+    s3_client.download_file(Bucket=BUCKET_NAME, Key="my_faiss.faiss", Filename=os.path.join(folder_path, "my_faiss.faiss"))
+    s3_client.download_file(Bucket=BUCKET_NAME, Key="my_faiss.pkl", Filename=os.path.join(folder_path, "my_faiss.pkl"))
 
-## Get LLMs
+# Get Bedrock LLM
 def get_llm():
-    llm = Bedrock(model_id="anthropic.claude-v2:1", client=bedrock_client, model_kwargs={'max_tokens_to_sample':512})
-    return llm
+    return Bedrock(model_id="anthropic.claude-v2:1", client=bedrock_client, model_kwargs={'max_tokens_to_sample': 512})
 
-## Get Response
-def get_response(llm):
-    ## Create Prompt / Template
+# Get response from RAG pipeline
+def get_response(llm, vectorstore, question):
     prompt_template = """
     Human: Please use the given context to provide concise answer to the question. 
     If you don't know the answer, just say that you don't know, don't try to make up an answer. 
@@ -61,45 +63,46 @@ def get_response(llm):
 
     Assistant:"""
 
-    PROMPT = PromptTemplate(template=prompt_template, input_variables=["context","question"])
+    PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
 
     qa = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        retriever=vectorstore.as_retriever(search_type="similarity",search_kwargs={"k":5}),
+        retriever=vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5}),
         return_source_documents=True,
-        chain_type_kwargs = {"prompt": PROMPT}
+        chain_type_kwargs={"prompt": PROMPT}
     )
 
-    answer = qa({"query":question})
+    answer = qa({"query": question})
     return answer['result']
 
-## Main method 
+# Main Streamlit app
 def main():
-    st.write("This is client site for chat with pdf demo using Bedrock, RAG etc.")
+    st.title("📄 Chat with PDF using Bedrock + FAISS + RAG")
 
     load_index()
 
     dir_list = os.listdir(folder_path)
-    st.write(f"Files and Directories in {folder_path}")
+    st.write(f"Files and Directories in {folder_path}:")
     st.write(dir_list)
 
-    ## Create Index
-    faiss_index = FAISS.load_local(index_name="my_faiss",
-                                   folder_path = folder_path,
-                                   embeddings = bedrock_embeddings,
-                                   allow_dangerous_deserialization=True)
+    # Load FAISS index
+    faiss_index = FAISS.load_local(
+        index_name="my_faiss",
+        folder_path=folder_path,
+        embeddings=bedrock_embeddings,
+        allow_dangerous_deserialization=True
+    )
 
-    st.write("INDEX IS READY")
-    question = st.text_input("Please ask your question")
+    st.success("✅ FAISS Index Loaded")
+
+    question = st.text_input("💬 Ask your question")
     if st.button("Ask Question"):
-        with st.spinner("Querying...."): 
-
-         llm = get_llm()
-
-        # get_response
-        st.write(get_response(llm, faiss_index, question))
-        st.success("Done")
+        with st.spinner("Querying..."):
+            llm = get_llm()
+            response = get_response(llm, faiss_index, question)
+            st.write(response)
+            st.success("Done")
 
 if __name__ == "__main__":
     main()

@@ -12,6 +12,7 @@ from langchain_community.embeddings import BedrockEmbeddings
 
 ## Bedrock
 from langchain.llms.bedrock import Bedrock
+from langchain_community.llms import Bedrock
 
 ## For RAG
 from langchain.prompts import PromptTemplate
@@ -66,7 +67,7 @@ def get_response(llm):
         llm=llm,
         chain_type="stuff",
         retriever=vectorstore.as_retriever(search_type="similarity",search_kwargs={"k":5}),
-        return_source_documents=True
+        return_source_documents=True,
         chain_type_kwargs = {"prompt": PROMPT}
     )
 
@@ -92,9 +93,9 @@ def main():
     st.write("INDEX IS READY")
     question = st.text_input("Please ask your question")
     if st.button("Ask Question"):
-        with st.spinner("Querying....")
+        with st.spinner("Querying...."): 
 
-        llm = get_llm()
+         llm = get_llm()
 
         # get_response
         st.write(get_response(llm, faiss_index, question))

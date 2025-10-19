@@ -40,8 +40,8 @@ def create_vector_store(request_id, documents):
     vectorstore_faiss.save_local(index_name=file_name, folder_path=folder_path)
 
     ## Upload to S3. 
-    s3_client.upload_file(Filename=folder_path + "/" + file_name + ".faiss", Bucket=BUCKET_NAME, key="my_faiss.faiss")
-    s3_client.upload_file(Filename=folder_path + "/" + file_name + ".pkl", Bucket=BUCKET_NAME, key="my_faiss.pkl")
+    s3_client.upload_file(Filename=folder_path + "/" + file_name + ".faiss", Bucket=BUCKET_NAME, Key="my_faiss.faiss")
+    s3_client.upload_file(Filename=folder_path + "/" + file_name + ".pkl", Bucket=BUCKET_NAME, Key="my_faiss.pkl")
 
     return True
 

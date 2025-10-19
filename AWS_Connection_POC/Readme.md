@@ -1,8 +1,7 @@
 # Here I will be writing steps on how to connect and consume AWS Services programmatically via Github Codespace. 
 
 ## Install and test the aws cli 
- 1. Check by tying command 'aws' whether aws command is present or not. Gitub Codespace works on Linux Containers therefore Linux 
-    command will be used. 
+ 1. Check by tying command 'aws' whether aws command is present or not. Gitub Codespace works on Linux    Containers therefore Linux command will be used. 
  2. Download the installer = curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
  3. Unzip the file = unzip awscliv2.zip
  4. Install the unzip file = sudo ./aws/install

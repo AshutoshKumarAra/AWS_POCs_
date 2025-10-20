@@ -3,5 +3,6 @@ langchain
 langchain-core
 langchain-community
 langchain_text_splitters
+langchain-aws
 faiss-cpu
 boto3

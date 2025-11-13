@@ -4,7 +4,8 @@
 1. Amazon Bedrock, Langchain, Streamlit, S3 Bucket, Docker, Titan Models, Python SDK. 
 2. Streamlit is an open-source Python library designed to simplify the creation and sharing of custom web applications, particularly for machine learning, data science, and general data analysis. It allows users to transform Python scripts into interactive web apps with minimal code, eliminating the need for extensive knowledge of front-end technologies like HTML, CSS, or JavaScript. 
 3. Langchain Framework is the framework designed to simplify the creation and sharing of custom web applications powered by Large Language Models (LLMs). It provides tools and components that allow developers to build, integrate and deploy AI systems, capable of reasoning, retrieval, and dynamic interaction with external data sources. 
-4. RecursiveCharacterTextSplitter is needed because when the statement or a paragraph ends it might be possible that the next paragraph also has some related context therefore we use this module. 
+4. RecursiveCharacterTextSplitter is needed because when the statement or a paragraph ends it might be possible that the next paragraph also has some related context therefore we use this module.
+5. FAISS is Facebook AI Similarlity Search which helps storing the vector embeddings in the Vector Store such that when user asks the question AI model conevrts the question into vector embedding and search the similar vector embedding into it's vector store. This is called Similarity Search. 
 
 ## Models used:
 1. Amazon Titan Embedding G1 - Text
@@ -14,11 +15,11 @@
 ![image info](./Bedrock-ChatWithPdf.png)
 
 ### ADMIN Application:
-    - Build Admin Web application where AdminUser can upload the pdf.
-    - The PDF text is split into chunks
-    - Using the Amazon Titan Embedding Model, create the vector representation of the chunks
-    - Using FAISS, save the vector index locally
-    - Upload the index to Amazon S3 bucket (You can use other vector stores like OpenSearch, Pinecone, PgVector etc., but for this demo, I chose cost effective S3)
+   - Build Admin Web application where AdminUser can upload the pdf.
+   - The PDF text is split into chunks
+   - Using the Amazon Titan Embedding Model, create the vector representation of the chunks
+   - Using FAISS, save the vector index locally
+   - Upload the index to Amazon S3 bucket (You can use other vector stores like OpenSearch, Pinecone, PgVector etc., but for this demo, I chose cost effective S3)
     
 ### USER Application:
   - Build User Web application where users can query / chat with the pdf.

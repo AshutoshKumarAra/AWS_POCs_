@@ -33,15 +33,36 @@ def get_llm():
         model_id="amazon.titan-text-express-v1",
         client=bedrock_client,
         model_kwargs={
-            "maxTokenCount": 3072,  # allow richer answers
-            "temperature": 0.6,     # encourage synthesis, still controlled
+            "maxTokenCount": 3072,
+            "temperature": 0.2,   # stricter, closer to context
             "topP": 0.9,
             "stopSequences": []
         }
     )
 
 # -----------------------------
-# RAG chain with strict OOC and richer synthesis
+# Image utilities (strict filtering)
+# -----------------------------
+def list_images_for_pages(pages, s3_prefix="pdf_images/"):
+    if not pages:
+        return []
+    try:
+        response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix=s3_prefix)
+    except Exception:
+        return []
+    keys = []
+    if "Contents" in response:
+        for obj in response["Contents"]:
+            key = obj["Key"]
+            for p in pages:
+                token = f"page{p}_"
+                if token in key:
+                    keys.append(key)
+                    break
+    return keys
+
+# -----------------------------
+# RAG chain
 # -----------------------------
 def build_rag_chain(llm, vectorstore):
     prompt_template = """You are a helpful assistant that answers questions using only the retrieved context from a PDF.
@@ -55,9 +76,8 @@ Question:
 Instructions:
 - Use ONLY the context above to answer; do not use external knowledge.
 - If the context does not contain enough information, reply EXACTLY with: "OUT_OF_CONTEXT".
-- Summarize the relevant information and connect ideas in your own words.
-- Provide a clear, structured response with short sections or bullet points where helpful.
-- Avoid copying text verbatim unless quoting is necessary.
+- Keep wording faithful to the PDF. Prefer short quotes from the context when possible.
+- Summarize minimally and clearly; do not invent beyond the provided text.
 
 Answer:"""
 
@@ -69,14 +89,10 @@ Answer:"""
         if not question:
             return "OUT_OF_CONTEXT"
 
-        # Retrieve relevant docs via Runnable retriever
         docs = retriever.invoke(question)
-
-        # If no docs → strict out of context
         if not docs or len(docs) == 0:
             return "OUT_OF_CONTEXT"
 
-        # Build richer, labeled context to nudge synthesis
         labeled_chunks = []
         for i, doc in enumerate(docs):
             content = doc.page_content.strip()
@@ -84,54 +100,48 @@ Answer:"""
                 labeled_chunks.append(f"Chunk {i+1}:\n{content}")
         context = "\n\n".join(labeled_chunks).strip()
 
-        # If context somehow empty → out of context
         if not context:
             return "OUT_OF_CONTEXT"
 
-        # Format prompt and invoke LLM
         formatted_prompt = PROMPT.format(context=context, question=question)
         answer = llm.invoke(formatted_prompt).strip()
 
-        # Guardrails: enforce strict OOC and avoid trivial echoes
         if answer == "OUT_OF_CONTEXT" or "OUT_OF_CONTEXT" in answer:
             return "OUT_OF_CONTEXT"
-
-        # If answer looks too short or copy-like, ask LLM to elaborate within same constraints
-        if len(answer.split()) < 10:
-            elaboration_prompt = formatted_prompt + "\n\nPlease elaborate with more detail, structure, and clear reasoning while staying within the provided context."
-            answer = llm.invoke(elaboration_prompt).strip()
-            if answer == "OUT_OF_CONTEXT" or "OUT_OF_CONTEXT" in answer or len(answer.split()) < 10:
-                return "OUT_OF_CONTEXT"
 
         return answer
 
     return rag_chain_fn
 
 # -----------------------------
-# Streamlit app
+# Streamlit app (UI unchanged)
 # -----------------------------
 def main():
     st.title("📄 Chat with PDF (Strict RAG)")
     st.write("Ask questions about your uploaded PDF. Answers are synthesized from retrieved context only. Outside questions return Out of Context.")
     st.write("---")
 
-    # Load FAISS index from S3 to local
-    load_index()
+    try:
+        load_index()
+    except Exception:
+        st.error("Failed to load FAISS index from S3. Check BUCKET_NAME and object keys.")
+        return
 
-    # Load FAISS index
-    faiss_index = FAISS.load_local(
-        folder_path=folder_path,
-        embeddings=bedrock_embeddings,
-        index_name="my_faiss",
-        allow_dangerous_deserialization=True
-    )
+    try:
+        faiss_index = FAISS.load_local(
+            folder_path=folder_path,
+            embeddings=bedrock_embeddings,
+            index_name="my_faiss",
+            allow_dangerous_deserialization=True
+        )
+    except Exception:
+        st.error("Failed to load local FAISS index. Verify files exist in /tmp and index_name matches.")
+        return
 
     st.success("✅ PDF Index is ready! You can now ask questions.")
     st.write("---")
 
     question = st.text_input("Please ask your question about the PDF document:")
-
-    # Optional: toggle to show retrieved chunks for transparency
     show_chunks = st.checkbox("Show retrieved chunks")
 
     if st.button("Ask Question"):
@@ -140,20 +150,46 @@ def main():
                 llm = get_llm()
                 rag_chain = build_rag_chain(llm, faiss_index)
 
-                # For optional debug: retrieve first to show chunks
+                # Retrieve docs
                 docs_preview = faiss_index.as_retriever(search_type="similarity", search_kwargs={"k": 5}).invoke(question.strip())
+
+                # Show retrieved chunks
                 if show_chunks:
                     debug_text = "\n\n---\n\n".join([f"Chunk {i+1}:\n{d.page_content[:1000]}" for i, d in enumerate(docs_preview)])
                     st.expander("🔍 Retrieved Chunks").write(debug_text if debug_text else "No chunks retrieved.")
 
-                # Invoke RAG chain
+                # Get answer
                 response = rag_chain({"question": question})
 
                 if response.strip() == "OUT_OF_CONTEXT":
                     st.warning("I cannot answer this question as it is not covered in the uploaded PDF document.")
-                else:
-                    st.success("Answer:")
-                    st.write(response)
+                    return
+
+                st.success("Answer:")
+                st.write(response)
+
+                # Collect relevant page numbers
+                relevant_pages = set()
+                for d in docs_preview:
+                    if "page_number" in d.metadata and isinstance(d.metadata["page_number"], int):
+                        relevant_pages.add(d.metadata["page_number"])
+                    elif "page" in d.metadata and isinstance(d.metadata["page"], int):
+                        relevant_pages.add(d.metadata["page"] + 1)
+
+                # Show only images for those pages
+                image_keys = list_images_for_pages(relevant_pages)
+                if image_keys:
+                    st.info("📷 Relevant images from the PDF:")
+                    for key in image_keys:
+                        try:
+                            url = s3_client.generate_presigned_url(
+                                "get_object",
+                                Params={"Bucket": BUCKET_NAME, "Key": key},
+                                ExpiresIn=3600
+                            )
+                            st.image(url, caption=key)
+                        except Exception:
+                            pass
         else:
             st.warning("Please enter a question.")
 

@@ -6,3 +6,10 @@ langchain_text_splitters
 faiss-cpu
 python-dotenv
 streamlit
+PyMuPDF
+lz4
+tqdm
+s3transfer
+requests 
+numpy
+typing-extensions

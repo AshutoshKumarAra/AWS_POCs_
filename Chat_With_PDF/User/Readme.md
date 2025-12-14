@@ -6,7 +6,7 @@
 4. Access the application from the browser. 
 5. Ask a question. 
 6. Check the response. 
-
+cd
 ### Gitbash Commands to build the Docker Image and run the Docker Image. 
 
 1. Build = docker build -t pdf-read-client .

@@ -6,3 +6,4 @@ langchain_text_splitters
 langchain-aws
 faiss-cpu
 boto3
+PyMuPDF

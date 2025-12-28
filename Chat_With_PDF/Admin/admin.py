@@ -1,5 +1,5 @@
 '''
-#-------------------This is the basic code-----------------------------------------
+#-------------------This is the Single Modality i.e, PDF code-----------------------------------------
 import boto3
 import streamlit as st
 import os
@@ -82,7 +82,7 @@ def main():
 if __name__ == "__main__":
     main()
 '''
-# ------------------This is my advance code---------------------------------
+# ------------------This is Multi-Modality i.e, PDF, Images code---------------------------------
 import os
 import uuid
 import tempfile

@@ -7,3 +7,8 @@ langchain-aws
 faiss-cpu
 boto3
 PyMuPDF
+typing-extensions
+requests
+python-dotenv
+lz4
+tqdm

@@ -9,5 +9,5 @@
 7. Confirm the FAISS vector index files are uploaded to S3. 
 
 ### Gitbash Commands to build the Docker Image and run the Docker Image.
-1. Build = docker build -t pdf-reader-admin .
-2. Run = docker run -e BUCKET_NAME=bedrock-chat-with-video -e AWS_REGION=us-east-1 -v ~/.aws:/root/.aws -p 8083:8083 pdf-reader-admin
+1. Build = docker build -t video-rag-admin .
+2. Run = docker run -e BUCKET_NAME=bedrock-chat-with-video -e AWS_REGION=us-east-1 -v ~/.aws:/root/.aws -p 8083:8083 video-rag-admin
